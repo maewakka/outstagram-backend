@@ -1,37 +1,72 @@
-# Outstagram-Backend
-Spring Boot와 React를 활용한 SNS 웹 어플리케이션 백엔드 부분
+## Outstagram Backend
+아웃스타그램 백엔드
 
-# :flags: 프로젝트 소개
-인스타그램을 참고하여 만든 웹 어플리케이션으로, 기본적인 SNS의 기능(게시글, 팔로우, 좋아요, 댓글, 메신저 등)의 벡엔드 로직 부분입니다.
+### 개발 환경
+- **Java** : JDK 17
+- **Spring Boot** : 3.1.7
+- **DataBase** : Oracle 21c
+- **ETC** : JPA, Minio, WebSocket, Spring Security, Jwt
 
-# :date: 개발 기간
-2022-1-1 ~ 2022-2-14
+### 프로젝트 구조
+```
+outstagram-backend/
+└── src/
+    └── main/
+        ├── java/
+        │   └── com/woo/outstagram/
+        │       ├── config/
+        │       ├── controller/
+        │       ├── dto/
+        │       │── entity/
+        │       │── repository/
+        │       │── service/
+        │       └── util/
+        └── resources/
+            └── application.yml
+```
 
-# :clubs: 개발 환경
-- Java 11
-- Spring Boot, React
-- MySQL with JPA
-- 배포 : AWS
+#### `com.woo.outstagram.config`
+이 패키지는 어플리케이션의 설정들과 관련된 클래스들을 포함합니다.
 
-# :golf: 주요 기능
+#### `com.woo.outstagram.controller`
+이 패키지는 어플리케이션의 Rest 컨트롤러와 관련된 클래스들을 포함합니다.
 
-### 인증/인가
-- Spring Security를 이용한 인증/인가 기능 구현
-- 회원가입, 로그인, 비밀번호변경 기능 구현
-- 로그인 시 JWT 토큰 생성 및 요청 마다 JWT 토큰 유효성 검증 구현
+#### `com.woo.outstagram.dto`
+이 패키지는 어플리케이션의 DTO 클래스들을 포함합니다.
 
-### 팔로우
-- 회원 간 팔로우 기능 구현
+#### `com.woo.outstagram.entity`
+이 패키지는 어플리케이션의 JPA 엔티티 클래스들을 포함합니다.
 
-### 게시글
-- 게시글 업로드 기능 구현
-- 본인 및 팔로우 회원들의 게시글 확인 가능
-- 게시글 좋아요 기능 구현
-- 게시글 댓글 기능 구현
+#### `com.woo.outstagram.repository`
+이 패키지는 어플리케이션의 JPA Repository 클래스들을 포함합니다.
 
-### 회원 정보
-- 회원 썸네일 이미지 변경 기능 구현
-- 회원 세부 정보 업데이트 기능 구현
+#### `com.woo.outstagram.service`
+이 패키지는 어플리케이션의 비즈니스 로직을 담당하는 서비스 클래스들을 포함합니다.
 
-### 메신저
-- 웹 소켓을 통한 실시간 채팅 기능 구현
+#### `com.woo.outstagram.util`
+이 패키지는 어플리케이션의 유틸 클래스들을 포함합니다.
+
+
+### 배포
+1. Gradle로 해당 프로젝트를 빌드한다.
+```
+./gradlew clean build
+```
+2. 빌드로 나온 App.jar를 실행시키는 도커 컨테이너 이미지를 생성한다.
+```
+FROM openjdk:17.0
+
+ENV TZ=Asia/Seoul
+
+ARG JAR_FILE=build/libs/*.jar
+
+COPY ${JAR_FILE} app.jar
+
+COPY src/main/resources/application.yml /config/application.yml
+
+CMD ["java", "-jar", "app.jar", "--spring.config.location=file:/config/application.yml"]
+```
+3. 해당 이미지를 쿠버네티스 환경에 배포한다.
+```
+kubectl apply -f deployment.yaml -f service.yaml -f config.yaml
+```
