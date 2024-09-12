@@ -3,7 +3,9 @@ package com.woo.outstagram.config;
 import com.woo.outstagram.util.websocket.StompHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -21,7 +23,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     // Stomp 프로토콜을 사용하여 Websocket 구성
     private final StompHandler stompHandler;
-    private final MyStompHandler myStompHandler;
 
     /**
      * subscribe로 들어오는 URL을 구독 쪽으로 넘겨준다.
@@ -47,7 +48,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      * JWT 인증 처리를 위한 Handler를 추가해준다.
      */
     @Override
-    public void configureClientInboundChannel(ChannelRegistration registry) {
+    public void configureClientInboundChannel( ChannelRegistration registry) {
         registry.interceptors(stompHandler);
     }
 }

@@ -8,7 +8,6 @@ import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.repository.follow.FollowRepository;
 import com.woo.outstagram.repository.post.PostRepository;
 import com.woo.outstagram.repository.user.UserRepository;
-import com.woo.outstagram.util.file.FileUploader;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -32,7 +31,6 @@ public class ProfileService {
 
     private final FollowRepository followRepository;
     private final PostRepository postRepository;
-    private final FileUploader fileUploader;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MinioClient minioClient;

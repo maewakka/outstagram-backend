@@ -4,6 +4,8 @@ import com.woo.outstagram.dto.user.LoginRequestDto;
 import com.woo.outstagram.dto.user.LoginResponseDto;
 import com.woo.outstagram.dto.user.SignUpRequestDto;
 import com.woo.outstagram.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,34 +27,16 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/login")
-    public ResponseEntity login(@Valid @RequestBody LoginRequestDto requestDto, BindingResult bindingResult) {
-        if(bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldError().getDefaultMessage();
+    public ResponseEntity<String> login(HttpSession session, @Valid @RequestBody LoginRequestDto requestDto) {
+        userService.login(session, requestDto);
 
-            return ResponseEntity.badRequest().body(errorMsg);
-        }
-        try {
-            String accessToken = userService.login(requestDto);
-            return ResponseEntity.ok().body(LoginResponseDto.builder().accessToken(accessToken).build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok("로그인이 되었습니다.");
     }
 
     @PostMapping("/join")
-    public ResponseEntity join(@Valid @RequestBody SignUpRequestDto requestDto, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            String errorMsg = bindingResult.getFieldError().getDefaultMessage();
+    public ResponseEntity<String> join(@Valid @RequestBody SignUpRequestDto requestDto) {
+        userService.join(requestDto);
 
-            return ResponseEntity.badRequest().body(errorMsg);
-        }
-
-        try {
-            userService.join(requestDto);
-
-            return ResponseEntity.ok().body("회원가입이 정상적으로 진행되었습니다.");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok().body("회원가입이 정상적으로 진행되었습니다.");
     }
 }

@@ -2,9 +2,10 @@ package com.woo.outstagram.controller;
 
 import com.woo.outstagram.dto.post.PostChatRequestDto;
 import com.woo.outstagram.dto.post.UploadPostRequestDto;
-import com.woo.outstagram.entity.user.CurrentUser;
+import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.service.PostService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,9 @@ public class PostController {
     }
 
     @GetMapping("/post-list")
-    public ResponseEntity getPostList(@CurrentUser User user) {
+    public ResponseEntity getPostList(HttpSession session) {
+        User user = (User) session.getAttribute("userInfo");
+        log.info("User : {}", user);
         try {
             return ResponseEntity.ok().body(postService.getPostList(user));
         } catch (Exception e) {

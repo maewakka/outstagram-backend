@@ -8,10 +8,10 @@ import java.util.List;
 @Data
 public class PostResponseDto {
 
-    private List<PostDto> postList;
+    private List<GetPostResp> postList;
 
     @Builder
-    public PostResponseDto(List<PostDto> postList) {
+    public PostResponseDto(List<GetPostResp> postList) {
         this.postList = postList;
     }
 }

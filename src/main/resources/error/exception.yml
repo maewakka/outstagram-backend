@@ -1,0 +1,33 @@
+### USER ###
+user_not_found:
+  status: 404
+  message: 해당 사용자를 찾을 수 없습니다.
+email_already_exist:
+  status: 409
+  message: 이미 가입된 이메일 입니다.
+login_fail:
+  status: 403
+  message: 로그인에 실패하였습니다. ID/PW 를 확인하세요.
+sign_up_fail:
+  status: 409
+  message: 회원 가입에 실패하였습니다.
+email_verify_fail:
+  status: 403
+  message: 이메일 인증에 실패하였습니다. 다시 인증하여 주세요.
+email_not_verified:
+  status: 403
+  message: 이메일이 인증되지 않았습니다. 이메일을 인증해주세요.
+duplicated_nickname:
+  status: 409
+  message: 이미 존재하는 닉네임입니다.
+expired_authentication:
+  status: 403
+  message: 인증이 만료되었습니다. 다시 로그인 해주세요.
+
+### MINIO ###
+minio_can_not_put:
+  status: 500
+  message: 미디어 파일을 저장할 수 없습니다.
+minio_can_not_get:
+  status: 404
+  message: 미디어 파일을 가져올 수 없습니다.

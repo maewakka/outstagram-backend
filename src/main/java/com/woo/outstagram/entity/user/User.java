@@ -2,17 +2,16 @@ package com.woo.outstagram.entity.user;
 
 import com.woo.outstagram.entity.BaseTimeEntity;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+import java.io.Serializable;
 
 
 @Entity
 @Table(name = "OUTSTAGRAM_USER")
 @Data
 @NoArgsConstructor
-public class User extends BaseTimeEntity {
+public class User extends BaseTimeEntity implements Serializable {
 
     @Id
     @GeneratedValue(strategy= GenerationType.SEQUENCE, generator = "OUTSTAGRAM_USER_SEQUENCE_GENERATOR")

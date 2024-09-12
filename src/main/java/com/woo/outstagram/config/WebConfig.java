@@ -1,9 +1,14 @@
 package com.woo.outstagram.config;
 
+import com.woo.exception.config.ErrorConfig;
+import com.woo.exception.handler.RestExceptionHandler;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -13,9 +18,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * Web MVC 관련 설정
  */
 @RequiredArgsConstructor
+@Slf4j
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    @Bean
+    public RestExceptionHandler setRestExceptionHandler() throws Exception {
+        ErrorConfig errorConfig = ErrorConfig.build().setResource("/error/exception.yml");
 
+        return RestExceptionHandler.setErrorConfig(errorConfig);
+    }
     @Bean
     public WebMvcConfigurer webMvcConfigurer() {
         return new WebMvcConfigurer() {

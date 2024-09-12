@@ -1,6 +1,6 @@
 package com.woo.outstagram.controller;
 
-import com.woo.outstagram.entity.user.CurrentUser;
+import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.service.FollowService;
 import lombok.RequiredArgsConstructor;

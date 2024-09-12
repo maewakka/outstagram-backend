@@ -1,6 +1,5 @@
 package com.woo.outstagram.util.websocket;
 
-import com.woo.outstagram.util.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class StompHandler implements ChannelInterceptor {
 
-    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 소켓 연결/구독 전에 JWT 토큰 인증이 진행되는 로직. 유효하지않으면 예외, 유요하면 그대로 진행한다.
@@ -28,18 +26,18 @@ public class StompHandler implements ChannelInterceptor {
 //        log.info("ACTOR : {}", accessor);
 
         String token = accessor.getFirstNativeHeader("Authorization");
-        if (!accessor.getCommand().equals(StompCommand.DISCONNECT)) {
-            if (token != null) {
-                try {
-                    jwtTokenProvider.getAuthentication(token);
-                    return message;
-                } catch (Exception e) {
-                    throw new RuntimeException("인증이 잘못되었습니다.");
-                }
-            } else {
-                throw new RuntimeException("Jwt 토큰값이 비었습니다.");
-            }
-        }
+//        if (!accessor.getCommand().equals(StompCommand.DISCONNECT)) {
+//            if (token != null) {
+//                try {
+//                    jwtTokenProvider.getAuthentication(token);
+//                    return message;
+//                } catch (Exception e) {
+//                    throw new RuntimeException("인증이 잘못되었습니다.");
+//                }
+//            } else {
+//                throw new RuntimeException("Jwt 토큰값이 비었습니다.");
+//            }
+//        }
 
         return message;
     }

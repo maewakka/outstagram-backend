@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woo.outstagram.mapper.PostMapper">
+    <resultMap id="postResultMap" type="com.woo.outstagram.dto.post.entity.PostDto">
+        <id column="POST_ID" property="postId"/>
+        <result column="NICKNAME" property="nickname"/>
+        <result column="EMAIL" property="email"/>
+        <result column="PROFILE_IMG_URL" property="profileImgUrl"/>
+        <result column="CONTENT" property="content"/>
+        <result column="CREATED_DATE" property="createdDate"/>
+        <result column="MODIFIED_DATE" property="modifiedDate"/>
+        <result column="CHAT_COUNT" property="chatCount"/>
+        <result column="LIKE_COUNT" property="likeCount"/>
+        <result column="IS_LIKED" property="isLiked"/>
+
+        <!-- 파일 리스트 매핑 -->
+        <collection property="postFileDtoList" ofType="com.woo.outstagram.dto.post.entity.PostFileDto">
+            <id column="POST_FILE_ID" property="postFileId"/>
+            <result column="POST_FILE_INDEX" property="postFileIndex"/>
+            <result column="POST_FILE_URL" property="postFileUrl"/>
+        </collection>
+    </resultMap>
+
+    <select id="getPostList" resultMap="postResultMap">
+        SELECT p.POST_ID,
+        u.NICKNAME,
+        u.EMAIL,
+        u.PROFILE_IMG_URL,
+        p.CONTENT,
+        p.CREATED_DATE,
+        p.MODIFIED_DATE,
+        (SELECT COUNT(*) FROM POST_CHAT pc WHERE pc.POST_ID = p.POST_ID) AS CHAT_COUNT,
+        (SELECT COUNT(*) FROM POST_LIKE pl WHERE pl.POST_ID = p.POST_ID) AS LIKE_COUNT,
+        (CASE
+        WHEN EXISTS (
+        SELECT 1
+        FROM POST_LIKE pl
+        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{following}
+        ) THEN 1
+        ELSE 0
+        END) AS IS_LIKED,
+        pf.POST_FILE_ID,
+        pf.POST_FILE_INDEX,
+        pf.POST_FILE_URL
+        FROM POST p
+        JOIN OUTSTAGRAM_USER u ON p.MADE_USER = u.USER_ID
+        LEFT JOIN POST_FILE pf ON p.POST_ID = pf.POST_ID
+        WHERE p.MADE_USER IN
+        <foreach item="id" index="index" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY p.MODIFIED_DATE DESC, pf.POST_FILE_INDEX ASC
+    </select>
+</mapper>

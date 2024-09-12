@@ -2,14 +2,16 @@ package com.woo.outstagram.service;
 
 import com.woo.outstagram.dto.follow.UserDto;
 import com.woo.outstagram.dto.post.*;
+import com.woo.outstagram.dto.post.entity.PostFileDto;
 import com.woo.outstagram.entity.post.Post;
 import com.woo.outstagram.entity.post.PostChat;
 import com.woo.outstagram.entity.post.PostFile;
 import com.woo.outstagram.entity.post.PostLike;
 import com.woo.outstagram.entity.user.User;
+import com.woo.outstagram.mapper.PostMapper;
 import com.woo.outstagram.repository.follow.FollowRepository;
 import com.woo.outstagram.repository.post.*;
-import com.woo.outstagram.util.file.FileUploader;
+import com.woo.outstagram.util.minio.MinioUtil;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -24,11 +26,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -37,11 +38,12 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostFileRepository postFileRepository;
-    private final FileUploader fileUploader;
     private final FollowRepository followRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostChatRepository postChatRepository;
     private final MinioClient minioClient;
+    private final MinioUtil minioUtil;
+    private final PostMapper postMapper;
 
     @Value("${minio.bucket-name}")
     private String bucket;
@@ -100,61 +102,14 @@ public class PostService {
     @Transactional
     public PostResponseDto getPostList(User follower) {
 
-        // 게시글을 가져오기 위한 유저 목록 리스트(본인 + 팔로잉 인원)
-        List<User> userList = new ArrayList<>();
-        userList.add(follower);
+        List<Long> followingUserList = followRepository.followerList(follower).stream().map(User::getId).collect(Collectors.toList());
+        followingUserList.add(follower.getId());
 
-        List<User> followingUserList = followRepository.followerList(follower);
-        followingUserList.forEach((user) -> userList.add(user));
-
-        // 해당 유저의 post와 postFile을 가져와 postList에 삽입한다.
-        List<PostDto> postDtoList = new ArrayList<>();
-
-        // 유저 리스트에 포함된 유저들의 모든 게시글을 수정시간 순으로 정렬하여 가져온다.
-        List<Post> postList = postRepository.getPosts(userList);
-
-
-        // 게시글에 대한 처리
-        postList.forEach((post) -> {
-            List<PostFile> postFileList = postFileRepository.findAllByPost(post);
-            List<PostFileDto> postFileDtoList = new ArrayList<>();
-
-            // PostFileDto로 변환
-            postFileList.forEach((postFile) -> {
-                String url = null;
-                try {
-                     url = minioClient.getPresignedObjectUrl(
-                                    GetPresignedObjectUrlArgs.builder()
-                                            .method(Method.GET)
-                                            .bucket(bucket)
-                                            .object(postFile.getPostFileUrl())
-                                            .expiry(2, TimeUnit.HOURS)
-                                            .build());
-                } catch (Exception e) {
-                    throw  new RuntimeException();
-                }
-
-                postFileDtoList.add(PostFileDto.builder()
-                                .fileOrder(postFile.getPostFileIndex())
-                                .fileUrl(url)
-                        .build());
-            });
-
-            // PostDtoList에 내용 삽입
-            postDtoList.add(
-                    PostDto.builder()
-                            .postFileList(postFileDtoList)
-                            .postId(post.getId())
-                            .content(post.getContent())
-                            .user(UserDto.toDto(post.getUser(), minioClient))
-                            .like(postLikeRepository.existsByPostAndUser(post, follower))
-                            .countLike(postLikeRepository.countByPost(post))
-                            .countChat(postChatRepository.countByPost(post))
-                            .build()
-            );
-        });
-
-        return PostResponseDto.builder().postList(postDtoList).build();
+        return PostResponseDto.builder()
+                .postList(postMapper.getPostList(followingUserList, follower.getId()).stream()
+                        .map(postDto -> GetPostResp.of(postDto, minioUtil))
+                        .toList())
+                .build();
     }
 
     /**
@@ -164,7 +119,7 @@ public class PostService {
     @Transactional
     public PostResponseDto getMyPostList(User user) {
         List<Post> postList = postRepository.findAllByUserOrderByModifiedDateDesc(user);
-        List<PostDto> postDtoList = new ArrayList<>();
+        List<GetPostResp> getPostRespList = new ArrayList<>();
 
         postList.forEach((post -> {
             List<PostFile> postFileList = postFileRepository.findAllByPost(post);
@@ -185,17 +140,17 @@ public class PostService {
                     throw  new RuntimeException();
                 }
 
-                postFileDtoList.add(PostFileDto.builder()
-                        .fileOrder(postFile.getPostFileIndex())
-                        .fileUrl(url)
-                        .build());
+//                postFileDtoList.add(PostFileDto.builder()
+//                        .fileOrder(postFile.getPostFileIndex())
+//                        .fileUrl(url)
+//                        .build());
 //                postFileDtoList.add(PostFileDto.toDto(postFile));
             });
 
             // PostDtoList에 내용 삽입
-            postDtoList.add(
-                    PostDto.builder()
-                            .postFileList(postFileDtoList)
+            getPostRespList.add(
+                    GetPostResp.builder()
+//                            .postFileList(postFileDtoList)
                             .postId(post.getId())
                             .content(post.getContent())
                             .user(UserDto.toDto(post.getUser(), minioClient))
@@ -204,7 +159,7 @@ public class PostService {
             );
         }));
 
-        return PostResponseDto.builder().postList(postDtoList).build();
+        return PostResponseDto.builder().postList(getPostRespList).build();
     }
 
     /**
@@ -338,7 +293,7 @@ public class PostService {
         content = "%" + content + "%";
         List<Post> postList = postRepository.getPosts(content);
 
-        List<PostDto> postDtoList = new ArrayList<>();
+        List<GetPostResp> getPostRespList = new ArrayList<>();
 
         postList.forEach((post -> {
             List<PostFile> postFileList = postFileRepository.findAllByPost(post);
@@ -360,16 +315,16 @@ public class PostService {
                     throw  new RuntimeException();
                 }
 
-                postFileDtoList.add(PostFileDto.builder()
-                        .fileOrder(postFile.getPostFileIndex())
-                        .fileUrl(url)
-                        .build());
+//                postFileDtoList.add(PostFileDto.builder()
+//                        .fileOrder(postFile.getPostFileIndex())
+//                        .fileUrl(url)
+//                        .build());
             });
 
             // PostDtoList에 내용 삽입
-            postDtoList.add(
-                    PostDto.builder()
-                            .postFileList(postFileDtoList)
+            getPostRespList.add(
+                    GetPostResp.builder()
+//                            .postFileList(postFileDtoList)
                             .postId(post.getId())
                             .content(post.getContent())
                             .user(UserDto.toDto(post.getUser(), minioClient))
@@ -379,6 +334,6 @@ public class PostService {
                             .build());
         }));
 
-        return PostResponseDto.builder().postList(postDtoList).build();
+        return PostResponseDto.builder().postList(getPostRespList).build();
     }
 }

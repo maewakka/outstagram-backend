@@ -1,4 +1,4 @@
-package com.woo.outstagram.entity.user;
+package com.woo.outstagram.util.auth;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
@@ -9,6 +9,5 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-@AuthenticationPrincipal(expression = "User")
 public @interface CurrentUser {
 }

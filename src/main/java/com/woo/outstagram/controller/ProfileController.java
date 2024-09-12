@@ -2,7 +2,7 @@ package com.woo.outstagram.controller;
 
 import com.woo.outstagram.dto.profile.ProfileUpdateRequestDto;
 import com.woo.outstagram.dto.profile.UpdatePasswordRequestDto;
-import com.woo.outstagram.entity.user.CurrentUser;
+import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.service.ProfileService;
 import jakarta.validation.Valid;
