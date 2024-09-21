@@ -1,6 +1,7 @@
 package com.woo.outstagram.util.auth;
 
 
+import com.woo.exception.util.BizException;
 import com.woo.outstagram.entity.user.User;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.core.MethodParameter;
@@ -31,6 +32,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     @Override
     public User resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         // 세션에서 userInfo 객체를 가져옴
-        return (User) session.getAttribute("userInfo");
+        User user = (User) session.getAttribute("userInfo");
+        if (user == null) {
+            throw new BizException("expired_authentication");
+        }
+        return user;
     }
 }

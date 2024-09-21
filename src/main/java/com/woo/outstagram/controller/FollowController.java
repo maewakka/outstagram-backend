@@ -1,5 +1,6 @@
 package com.woo.outstagram.controller;
 
+import com.woo.outstagram.dto.follow.UserListResponseDto;
 import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.service.FollowService;
@@ -18,30 +19,17 @@ public class FollowController {
 
     private final FollowService followService;
     @GetMapping("/user-list")
-    public ResponseEntity getUserList(@CurrentUser User user) {
-        try {
-            return ResponseEntity.ok().body(followService.getUserList(user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public UserListResponseDto getUserList(@CurrentUser User user) {
+        return followService.getUserList(user);
     }
 
     @GetMapping("/follow")
-    public ResponseEntity follow(@CurrentUser User user, @RequestParam(value = "followingEmail", required = false) String followingEmail) {
-        log.info(followingEmail);
-        try {
-            return ResponseEntity.ok().body(followService.saveFollow(user, followingEmail));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public UserListResponseDto follow(@CurrentUser User user, @RequestParam(value = "followingEmail", required = false) String followingEmail) {
+        return followService.saveFollow(user, followingEmail);
     }
 
     @DeleteMapping("/follow")
-    public ResponseEntity unFollow(@CurrentUser User user, @RequestParam(value = "followingEmail") String followingEmail) {
-        try {
-            return ResponseEntity.ok().body(followService.deleteFollow(user, followingEmail));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public UserListResponseDto unFollow(@CurrentUser User user, @RequestParam(value = "followingEmail") String followingEmail) {
+        return followService.deleteFollow(user, followingEmail);
     }
 }

@@ -1,17 +1,22 @@
 package com.woo.outstagram.dto.follow;
 
 import com.woo.outstagram.entity.user.User;
+import com.woo.outstagram.util.minio.MinioUtil;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-@Data
+@Getter
+@Setter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class UserDto {
 
     private String email;
@@ -19,37 +24,12 @@ public class UserDto {
     private String profileUrl;
     private boolean isFollow;
 
-    @Builder
-    public UserDto(String email, String nickname, String profileUrl, boolean isFollow) {
-        this.email = email;
-        this.nickname = nickname;
-        this.profileUrl = profileUrl;
-        this.isFollow = isFollow;
-    }
 
-    public static UserDto toDto(User user, MinioClient minioClient) {
-        Map<String, String> reqParams = new HashMap<String, String>();
-        reqParams.put("response-content-type", "image/jpeg");
-        String profileImgUrl = null;
-
-        String url = null;
-        try {
-            url = minioClient.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(Method.GET)
-                            .bucket("outstagram")
-                            .object(user.getProfileImgUrl())
-                            .expiry(2, TimeUnit.HOURS)
-                            .extraQueryParams(reqParams)
-                            .build());
-        } catch (Exception e) {
-            throw  new RuntimeException();
-        }
-
+    public static UserDto of(User user, MinioUtil minioUtil) {
         return UserDto.builder()
                 .email(user.getEmail())
                 .nickname(user.getNickname())
-                .profileUrl(url)
+                .profileUrl(minioUtil.getUrlFromMinioObject(user.getProfileImgUrl()))
                 .build();
     }
 }

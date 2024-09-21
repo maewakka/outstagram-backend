@@ -39,3 +39,8 @@ minio_can_not_get:
 post_not_found:
   status: 404
   message: 해당 포스트를 찾을 수 없습니다.
+
+### FOLLOW ###
+follow_error:
+  status: 500
+  message: 팔로우 처리 중 에러가 발생하였습니다.
