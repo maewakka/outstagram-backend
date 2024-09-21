@@ -46,28 +46,11 @@ public class ProfileService {
      */
     @Transactional
     public UserDetailResponseDto getProfile(User user) {
-        Map<String, String> reqParams = new HashMap<String, String>();
-        reqParams.put("response-content-type", "image/jpeg");
-
-        String profileImgUrl = null;
-        try {
-            profileImgUrl = minioClient.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(Method.GET)
-                            .bucket(bucket)
-                            .object(user.getProfileImgUrl())
-                            .expiry(2, TimeUnit.HOURS)
-                            .extraQueryParams(reqParams)
-                            .build());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw  new RuntimeException();
-        }
-
+        log.info("USER : {}", user);
         return UserDetailResponseDto.builder()
                 .email(user.getEmail())
                 .nickname(user.getNickname())
-                .profileUrl(profileImgUrl)
+                .profileUrl(minioUtil.getUrlFromMinioObject(user.getProfileImgUrl()))
                 .phone(user.getPhone())
                 .introduce(user.getIntroduce())
                 .gender(user.getGender())
