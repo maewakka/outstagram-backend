@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.woo.outstagram.mapper.PostMapper">
-    <resultMap id="myPostResultMap" type="com.woo.outstagram.dto.post.entity.PostDto">
+    <resultMap id="searchPostResultMap" type="com.woo.outstagram.dto.post.entity.PostDto">
         <id column="POST_ID" property="postId"/>
         <result column="NICKNAME" property="nickname"/>
         <result column="EMAIL" property="email"/>
@@ -22,7 +22,7 @@
         </collection>
     </resultMap>
 
-    <select id="getMyPostList" resultMap="myPostResultMap">
+    <select id="getSearchPostList" resultMap="searchPostResultMap">
         SELECT
             p.POST_ID,
             u.NICKNAME,
@@ -38,17 +38,18 @@
                     WHEN EXISTS (
                         SELECT 1
                         FROM POST_LIKE pl
-                        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{id}
-                        ) THEN 1
+                        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{following}
+                    ) THEN 1
                     ELSE 0
-            END) AS IS_LIKED,
+            END
+            ) AS IS_LIKED,
             pf.POST_FILE_ID,
             pf.POST_FILE_INDEX,
             pf.POST_FILE_URL
         FROM POST p
         JOIN OUTSTAGRAM_USER u ON p.MADE_USER = u.USER_ID
         LEFT JOIN POST_FILE pf ON p.POST_ID = pf.POST_ID
-        WHERE p.MADE_USER = #{id}
+        WHERE p.CONTENT LIKE '%' || #{query} || '%'
         ORDER BY p.MODIFIED_DATE DESC, pf.POST_FILE_INDEX ASC
     </select>
 </mapper>

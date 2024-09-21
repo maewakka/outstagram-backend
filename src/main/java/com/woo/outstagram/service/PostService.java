@@ -1,5 +1,6 @@
 package com.woo.outstagram.service;
 
+import com.woo.exception.util.BizException;
 import com.woo.outstagram.dto.follow.UserDto;
 import com.woo.outstagram.dto.post.*;
 import com.woo.outstagram.dto.post.entity.PostFileDto;
@@ -41,12 +42,8 @@ public class PostService {
     private final FollowRepository followRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostChatRepository postChatRepository;
-    private final MinioClient minioClient;
     private final MinioUtil minioUtil;
     private final PostMapper postMapper;
-
-    @Value("${minio.bucket-name}")
-    private String bucket;
 
     /**
      * 게시글에 대한 내용(글, 유저, 이미지, 동영상 등)을 저장한다.
@@ -54,7 +51,6 @@ public class PostService {
      */
     @Transactional
     public void uploadPost(User user, UploadPostRequestDto requestDto) {
-
         List<MultipartFile> files = requestDto.getFile();
 
         // POST Entity 생성 및 저장
@@ -69,7 +65,6 @@ public class PostService {
         AtomicInteger index = new AtomicInteger();
         files.stream()
                 .forEach((file) -> {
-//                    String location = "/static/post/" + user.getEmail() + "/" + savedPost.getId() + "/" + file.getOriginalFilename();
                     String location = "post/" + user.getEmail() + "/" + savedPost.getId() + "/" + file.getOriginalFilename();
 
                     PostFile savePostFile = PostFile.builder()
@@ -78,19 +73,7 @@ public class PostService {
                                     .post(savedPost)
                                     .user(user)
                                     .build();
-
-//                    fileUploader.saveFile(user.getEmail(), savedPost.getId(), "post", file);
-
-                    try {
-                        minioClient.putObject(PutObjectArgs.builder()
-                                        .bucket(bucket)
-                                        .object(location)
-                                        .stream(file.getInputStream(), file.getSize(), -1)
-                                        .build());
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-
+                    minioUtil.putObjectToMinio(file, location);
                     postFileRepository.save(savePostFile);
                 });
     }
@@ -99,9 +82,8 @@ public class PostService {
      * 나와 내가 Follow한 유저들의 게시물들을 반환해준다.
      * @param follower
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public PostResponseDto getPostList(User follower) {
-
         List<Long> followingUserList = followRepository.followerList(follower).stream().map(User::getId).collect(Collectors.toList());
         followingUserList.add(follower.getId());
 
@@ -116,73 +98,34 @@ public class PostService {
      * 내가 작성한 게시글의 List를 반환해준다.
      * @param user
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public PostResponseDto getMyPostList(User user) {
-        List<Post> postList = postRepository.findAllByUserOrderByModifiedDateDesc(user);
-        List<GetPostResp> getPostRespList = new ArrayList<>();
-
-        postList.forEach((post -> {
-            List<PostFile> postFileList = postFileRepository.findAllByPost(post);
-            List<PostFileDto> postFileDtoList = new ArrayList<>();
-
-            // PostFileDto로 변환
-            postFileList.forEach((postFile) -> {
-                String url = null;
-                try {
-                    url = minioClient.getPresignedObjectUrl(
-                            GetPresignedObjectUrlArgs.builder()
-                                    .method(Method.GET)
-                                    .bucket(bucket)
-                                    .object(postFile.getPostFileUrl())
-                                    .expiry(2, TimeUnit.HOURS)
-                                    .build());
-                } catch (Exception e) {
-                    throw  new RuntimeException();
-                }
-
-//                postFileDtoList.add(PostFileDto.builder()
-//                        .fileOrder(postFile.getPostFileIndex())
-//                        .fileUrl(url)
-//                        .build());
-//                postFileDtoList.add(PostFileDto.toDto(postFile));
-            });
-
-            // PostDtoList에 내용 삽입
-            getPostRespList.add(
-                    GetPostResp.builder()
-//                            .postFileList(postFileDtoList)
-                            .postId(post.getId())
-                            .content(post.getContent())
-                            .user(UserDto.toDto(post.getUser(), minioClient))
-                            .like(postLikeRepository.existsByPostAndUser(post, user))
-                            .build()
-            );
-        }));
-
-        return PostResponseDto.builder().postList(getPostRespList).build();
+        return PostResponseDto.builder()
+                .postList(postMapper.getMyPostList(user.getId()).stream()
+                        .map(postDto -> GetPostResp.of(postDto, minioUtil))
+                        .toList())
+                .build();
     }
 
     /**
      * 게시글을 삭제하는 로직
      * @param user, postId
      */
-    @Transactional
     public PostResponseDto deletePost(User user, Long postId) {
-        Post savedPost = postRepository.findById(postId).orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
+        deletePostDetail(user, postId);
+
+        return this.getMyPostList(user);
+    }
+
+    @Transactional
+    public void deletePostDetail(User user, Long postId) {
+        Post savedPost = postRepository.findById(postId).orElseThrow(() -> new BizException("post_not_found"));
         List<PostFile> postFileList = postFileRepository.findAllByPost(savedPost);
         List<PostChat> postChatList = postChatRepository.findAllByPostOrderByCreatedDateDesc(savedPost);
 
-        postFileList.forEach((postFile -> {
-            postFileRepository.delete(postFile);
-        }));
-
-        postChatList.forEach((postChat -> {
-            postChatRepository.delete(postChat);
-        }));
-
+        postFileRepository.deleteAll(postFileList);
+        postChatRepository.deleteAll(postChatList);
         postRepository.delete(savedPost);
-
-        return this.getMyPostList(user);
     }
 
 
@@ -190,9 +133,15 @@ public class PostService {
      * 해당 게시글의 좋아요 눌렀을 때 로직
      * @param user, postId
      */
-    @Transactional
     public PostResponseDto setPostLike(User user, Long postId) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
+        setPostLikeDetail(user, postId);
+
+        return this.getPostList(user);
+    }
+
+    @Transactional
+    public void setPostLikeDetail(User user, Long postId) {
+        Post post = postRepository.findById(postId).orElseThrow(() -> new BizException("post_not_found"));
 
         // postLike 저장 DB에 요청 좋아요 정보가 없다면, 저장한다.
         if(!postLikeRepository.existsByPostAndUser(post, user)) {
@@ -201,23 +150,25 @@ public class PostService {
                     .user(user)
                     .build());
         }
-
-        return this.getPostList(user);
     }
 
     /**
      * 해당 게시글 좋아요를 취소했을 때 로직
      * @param user, postId
      */
-    @Transactional
     public PostResponseDto deletePostLike(User user, Long postId) {
+        deletePostLikeDetail(user, postId);
+
+        return this.getPostList(user);
+    }
+
+    @Transactional
+    public void deletePostLikeDetail(User user, Long postId) {
         Post post = postRepository.findById(postId).orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
 
         PostLike postLike = postLikeRepository.findByPostAndUser(post, user).orElseThrow(() -> new EntityNotFoundException());
 
         postLikeRepository.delete(postLike);
-
-        return this.getPostList(user);
     }
 
     /**
@@ -226,40 +177,26 @@ public class PostService {
      */
     @Transactional
     public PostChatResponseDto getPostChatList(Long postId) {
-        Post post = postRepository.findById(postId).orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
-
+        Post post = postRepository.findById(postId).orElseThrow(() -> new BizException("post_not_found"));
         List<PostChat> postChatList = postChatRepository.findAllByPostOrderByCreatedDateDesc(post);
-        List<PostChatDto> postChatDtoList = new ArrayList<>();
 
-
-        postChatList.forEach((postChat -> {
-            String profileImgUrl = null;
-
-            try {
-                profileImgUrl = minioClient.getPresignedObjectUrl(
-                        GetPresignedObjectUrlArgs.builder()
-                                .method(Method.GET)
-                                .bucket(bucket)
-                                .object(postChat.getUser().getProfileImgUrl())
-                                .expiry(2, TimeUnit.HOURS)
-                                .build());
-            } catch (Exception e) {
-                throw  new RuntimeException();
-            }
-
-
-            postChatDtoList.add(PostChatDto.toDto(postChat, profileImgUrl));
-        }));
-
-        return PostChatResponseDto.builder().postChatList(postChatDtoList).build();
+        return PostChatResponseDto.builder().postChatList(
+                postChatList.stream().map(postChat -> PostChatDto.of(postChat, minioUtil.getUrlFromMinioObject(postChat.getUser().getProfileImgUrl()))).toList()
+        ).build();
     }
 
     /**
      * 게시글에 댓글을 게시했을 때 저장해주는 로직
      * @param user, PostChatRequestDto
      */
-    @Transactional
     public PostChatResponseDto setPostChat(User user, PostChatRequestDto requestDto) {
+        setPostChatDetail(user, requestDto);
+
+        return this.getPostChatList(requestDto.getPostId());
+    }
+
+    @Transactional
+    public void setPostChatDetail(User user, PostChatRequestDto requestDto) {
         Post post = postRepository.findById(requestDto.getPostId()).orElseThrow(() -> new EntityNotFoundException("해당 게시글을 찾을 수 없습니다."));
 
         postChatRepository.save(PostChat.builder()
@@ -267,21 +204,23 @@ public class PostService {
                 .user(user)
                 .content(requestDto.getContent())
                 .build());
-
-        return this.getPostChatList(requestDto.getPostId());
     }
 
     /**
      * 해당 댓글을 삭제하는 로직
      * @param postId, postChatId
      */
-    @Transactional
     public PostChatResponseDto deletePostChat(Long postId, Long postChatId) {
+        deletePostChatDetail(postChatId);
+
+        return this.getPostChatList(postId);
+    }
+
+    @Transactional
+    public void deletePostChatDetail(Long postChatId) {
         PostChat postChat = postChatRepository.findById(postChatId).orElseThrow(() -> new EntityNotFoundException("해당 댓글을 찾을 수 없습니다."));
 
         postChatRepository.delete(postChat);
-
-        return this.getPostChatList(postId);
     }
 
     /**
@@ -290,50 +229,10 @@ public class PostService {
      */
     @Transactional
     public PostResponseDto getSearchPostList(User user, String content) {
-        content = "%" + content + "%";
-        List<Post> postList = postRepository.getPosts(content);
-
-        List<GetPostResp> getPostRespList = new ArrayList<>();
-
-        postList.forEach((post -> {
-            List<PostFile> postFileList = postFileRepository.findAllByPost(post);
-            List<PostFileDto> postFileDtoList = new ArrayList<>();
-
-            // PostFileDto로 변환
-            postFileList.forEach((postFile) -> {
-                String url = null;
-                try {
-                    url = minioClient.getPresignedObjectUrl(
-                            GetPresignedObjectUrlArgs.builder()
-                                    .method(Method.GET)
-                                    .bucket(bucket)
-                                    .object(postFile.getPostFileUrl())
-                                    .expiry(2, TimeUnit.HOURS)
-//                                    .extraQueryParams(reqParams)
-                                    .build());
-                } catch (Exception e) {
-                    throw  new RuntimeException();
-                }
-
-//                postFileDtoList.add(PostFileDto.builder()
-//                        .fileOrder(postFile.getPostFileIndex())
-//                        .fileUrl(url)
-//                        .build());
-            });
-
-            // PostDtoList에 내용 삽입
-            getPostRespList.add(
-                    GetPostResp.builder()
-//                            .postFileList(postFileDtoList)
-                            .postId(post.getId())
-                            .content(post.getContent())
-                            .user(UserDto.toDto(post.getUser(), minioClient))
-                            .like(postLikeRepository.existsByPostAndUser(post, user))
-                            .countLike(postLikeRepository.countByPost(post))
-                            .countChat(postChatRepository.countByPost(post))
-                            .build());
-        }));
-
-        return PostResponseDto.builder().postList(getPostRespList).build();
+        return PostResponseDto.builder()
+                .postList(postMapper.getSearchPostList(user.getId(), content).stream()
+                        .map(postDto -> GetPostResp.of(postDto, minioUtil))
+                        .toList())
+                .build();
     }
 }

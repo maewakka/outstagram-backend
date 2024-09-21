@@ -1,6 +1,7 @@
 package com.woo.outstagram.controller;
 
 import com.woo.outstagram.dto.post.PostChatRequestDto;
+import com.woo.outstagram.dto.post.PostResponseDto;
 import com.woo.outstagram.dto.post.UploadPostRequestDto;
 import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
@@ -40,32 +41,18 @@ public class PostController {
     }
 
     @GetMapping("/post-list")
-    public ResponseEntity getPostList(HttpSession session) {
-        User user = (User) session.getAttribute("userInfo");
-        log.info("User : {}", user);
-        try {
-            return ResponseEntity.ok().body(postService.getPostList(user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public PostResponseDto getPostList(@CurrentUser User user) {
+        return postService.getPostList(user);
     }
 
     @GetMapping("/post-my-list")
-    public ResponseEntity getMyPostList(@CurrentUser User user) {
-        try {
-            return ResponseEntity.ok().body(postService.getMyPostList(user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public PostResponseDto getMyPostList(@CurrentUser User user) {
+        return postService.getMyPostList(user);
     }
 
     @DeleteMapping("/post")
-    public ResponseEntity deletePost(@CurrentUser User user, @RequestParam(value = "postId") Long postId) {
-        try {
-            return ResponseEntity.ok().body(postService.deletePost(user, postId));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public PostResponseDto deletePost(@CurrentUser User user, @RequestParam(value = "postId") Long postId) {
+        return postService.deletePost(user, postId);
     }
 
     @GetMapping("/like")

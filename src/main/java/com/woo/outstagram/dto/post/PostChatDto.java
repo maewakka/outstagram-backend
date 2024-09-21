@@ -26,7 +26,7 @@ public class PostChatDto {
         this.createdDate = createdDate;
     }
 
-    public static PostChatDto toDto(PostChat postChat, String profileUrl) {
+    public static PostChatDto of(PostChat postChat, String profileUrl) {
         return PostChatDto.builder()
                 .chatId(postChat.getId())
                 .email(postChat.getUser().getEmail())

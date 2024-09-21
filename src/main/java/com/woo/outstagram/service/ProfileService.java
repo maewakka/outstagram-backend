@@ -8,6 +8,7 @@ import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.repository.follow.FollowRepository;
 import com.woo.outstagram.repository.post.PostRepository;
 import com.woo.outstagram.repository.user.UserRepository;
+import com.woo.outstagram.util.minio.MinioUtil;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -33,6 +34,7 @@ public class ProfileService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MinioUtil minioUtil;
     private final MinioClient minioClient;
 
     @Value("${minio.bucket-name}")

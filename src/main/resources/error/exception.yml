@@ -31,3 +31,8 @@ minio_can_not_put:
 minio_can_not_get:
   status: 404
   message: 미디어 파일을 가져올 수 없습니다.
+
+### POST ###
+post_not_found:
+  status: 404
+  message: 해당 포스트를 찾을 수 없습니다.

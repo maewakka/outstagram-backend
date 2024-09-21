@@ -23,26 +23,29 @@
     </resultMap>
 
     <select id="getPostList" resultMap="postResultMap">
-        SELECT p.POST_ID,
-        u.NICKNAME,
-        u.EMAIL,
-        u.PROFILE_IMG_URL,
-        p.CONTENT,
-        p.CREATED_DATE,
-        p.MODIFIED_DATE,
-        (SELECT COUNT(*) FROM POST_CHAT pc WHERE pc.POST_ID = p.POST_ID) AS CHAT_COUNT,
-        (SELECT COUNT(*) FROM POST_LIKE pl WHERE pl.POST_ID = p.POST_ID) AS LIKE_COUNT,
-        (CASE
-        WHEN EXISTS (
-        SELECT 1
-        FROM POST_LIKE pl
-        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{following}
-        ) THEN 1
-        ELSE 0
-        END) AS IS_LIKED,
-        pf.POST_FILE_ID,
-        pf.POST_FILE_INDEX,
-        pf.POST_FILE_URL
+        SELECT
+            p.POST_ID,
+            u.NICKNAME,
+            u.EMAIL,
+            u.PROFILE_IMG_URL,
+            p.CONTENT,
+            p.CREATED_DATE,
+            p.MODIFIED_DATE,
+            (SELECT COUNT(*) FROM POST_CHAT pc WHERE pc.POST_ID = p.POST_ID) AS CHAT_COUNT,
+            (SELECT COUNT(*) FROM POST_LIKE pl WHERE pl.POST_ID = p.POST_ID) AS LIKE_COUNT,
+            (
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM POST_LIKE pl
+                        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{following}
+                    ) THEN 1
+                    ELSE 0
+            END
+            ) AS IS_LIKED,
+            pf.POST_FILE_ID,
+            pf.POST_FILE_INDEX,
+            pf.POST_FILE_URL
         FROM POST p
         JOIN OUTSTAGRAM_USER u ON p.MADE_USER = u.USER_ID
         LEFT JOIN POST_FILE pf ON p.POST_ID = pf.POST_ID

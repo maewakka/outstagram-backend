@@ -11,4 +11,5 @@ import java.util.List;
 public interface PostMapper {
     List<PostDto> getPostList(List<Long> ids, Long following);
     List<PostDto> getMyPostList(Long id);
+    List<PostDto> getSearchPostList(Long following, String query);
 }
