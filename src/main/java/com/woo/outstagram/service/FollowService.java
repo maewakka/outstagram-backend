@@ -32,12 +32,8 @@ public class FollowService {
 
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
-    private final MinioClient minioClient;
     private final MinioUtil minioUtil;
     private final FollowMapper followMapper;
-
-    @Value("${minio.bucket-name}")
-    private String bucket;
 
     /**
      * Follow할 유저들의 리스트와 Follow상태를 리턴해준다.

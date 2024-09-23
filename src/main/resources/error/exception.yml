@@ -44,3 +44,8 @@ post_not_found:
 follow_error:
   status: 500
   message: 팔로우 처리 중 에러가 발생하였습니다.
+
+### CHAT ###
+chat_room_not_found:
+  status: 404
+  message: 해당 채팅방을 찾을 수 없습니다.

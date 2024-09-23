@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.woo.outstagram.mapper.ChatMapper">
+    <resultMap id="chatResultMap" type="com.woo.outstagram.dto.chat.ChatUserDto">
+        <result column="EMAIL" property="email"/>
+        <result column="NICKNAME" property="nickname"/>
+        <result column="PROFILE_IMG_URL" property="profileUrl"/>
+        <result column="CHAT_ROOM_ID" property="chatRoomId"/>
+        <result column="LAST_MESSAGE" property="lastMessage"/>
+        <result column="MODIFIED_DATE" property="modifiedDate"/>
+    </resultMap>
+
+    <select id="getChatUserList" resultMap="chatResultMap">
+        SELECT ou.EMAIL, ou.NICKNAME, ou.PROFILE_IMG_URL, c.CHAT_ROOM_ID, c.LAST_MESSAGE, c.MODIFIED_DATE FROM CHAT_ROOM_USER u
+           LEFT JOIN CHAT_ROOM c ON u.CHAT_ROOM_ID = c.CHAT_ROOM_ID
+           LEFT JOIN OUTSTAGRAM_USER ou ON u.TARGET_USER_ID = ou.USER_ID
+        WHERE u.USER_ID = #{ownId}
+        ORDER BY ou.NICKNAME
+    </select>
+</mapper>

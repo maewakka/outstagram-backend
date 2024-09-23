@@ -1,6 +1,8 @@
 package com.woo.outstagram.controller;
 
 import com.woo.outstagram.dto.chat.ChatRequestDto;
+import com.woo.outstagram.dto.chat.ChatResponseDto;
+import com.woo.outstagram.dto.chat.ChatUserListResponseDto;
 import com.woo.outstagram.util.auth.CurrentUser;
 import com.woo.outstagram.entity.user.User;
 import com.woo.outstagram.service.ChatService;
@@ -22,22 +24,14 @@ public class ChatController {
 
     // 채팅방 생성
     @GetMapping("/chats/create")
-    public ResponseEntity<? extends Object> createChatRoom(@CurrentUser User user, @RequestParam(value = "target") String target) throws Exception {
-        try {
-            return ResponseEntity.ok().body(chatService.createChatRoom(user, target));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("요청에 오류가 발생하였습니다.");
-        }
+    public ChatUserListResponseDto createChatRoom(@CurrentUser User user, @RequestParam(value = "target") String target) {
+        return chatService.createChatRoom(user, target);
     }
 
     // 채팅 유저 목록
     @GetMapping("/chats/user-list")
-    public ResponseEntity getChatUserList(@CurrentUser User user) {
-        try {
-            return ResponseEntity.ok().body(chatService.getChatUserList(user));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("요청에 오류가 발생하였습니다.");
-        }
+    public ChatUserListResponseDto getChatUserList(@CurrentUser User user) {
+        return chatService.getChatUserList(user);
     }
 
     // 채팅방 메세지 송수신
@@ -48,21 +42,13 @@ public class ChatController {
 
     // 채팅방 목록
     @GetMapping("/chats/chat-list")
-    public ResponseEntity getChatList(@RequestParam(value = "chatRoomId", required = false) Long chatRoomId) {
-        try {
-            return ResponseEntity.ok().body(chatService.getChatList(chatRoomId));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("요청에 오류가 발생하였습니다.");
-        }
+    public ChatResponseDto getChatList(@RequestParam(value = "chatRoomId", required = false) Long chatRoomId) {
+        return chatService.getChatList(chatRoomId);
     }
 
     // 채팅 메세지 내역 저장
     @PostMapping("/chats/chat")
-    public ResponseEntity saveChat(@CurrentUser User user, @RequestBody ChatRequestDto requestDto) {
-        try {
-            return ResponseEntity.ok().body(chatService.saveChat(user, requestDto));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("요청에 오류가 발생하였습니다.");
-        }
+    public ChatResponseDto saveChat(@CurrentUser User user, @RequestBody ChatRequestDto requestDto) {
+        return chatService.saveChat(user, requestDto);
     }
 }

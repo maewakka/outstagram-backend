@@ -1,6 +1,7 @@
 package com.woo.outstagram.dto.chat;
 
 import com.woo.outstagram.entity.chat.Chat;
+import com.woo.outstagram.util.minio.MinioUtil;
 import lombok.Builder;
 import lombok.Data;
 
@@ -24,13 +25,13 @@ public class ChatDto {
         this.createdDate = createdDate;
     }
 
-    public static ChatDto toDto(Chat chat, String profileUrl) {
+    public static ChatDto of(Chat chat, MinioUtil minioUtil) {
         return ChatDto.builder()
                 .email(chat.getUser().getEmail())
                 .content(chat.getContent())
                 .createdDate(chat.getCreatedDate())
                 .nickname(chat.getUser().getNickname())
-                .profileUrl(profileUrl)
+                .profileUrl(minioUtil.getUrlFromMinioObject(chat.getUser().getProfileImgUrl()))
                 .build();
     }
 }

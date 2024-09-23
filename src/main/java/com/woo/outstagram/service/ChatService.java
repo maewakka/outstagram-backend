@@ -1,14 +1,17 @@
 package com.woo.outstagram.service;
 
+import com.woo.exception.util.BizException;
 import com.woo.outstagram.dto.chat.*;
 import com.woo.outstagram.entity.chat.Chat;
 import com.woo.outstagram.entity.chat.ChatRoom;
 import com.woo.outstagram.entity.chat.ChatRoomUser;
 import com.woo.outstagram.entity.user.User;
+import com.woo.outstagram.mapper.ChatMapper;
 import com.woo.outstagram.repository.chat.ChatRepository;
 import com.woo.outstagram.repository.chat.ChatRoomRepository;
 import com.woo.outstagram.repository.chat.ChatRoomUserRepository;
 import com.woo.outstagram.repository.user.UserRepository;
+import com.woo.outstagram.util.minio.MinioUtil;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
@@ -38,10 +41,8 @@ public class ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final SimpMessagingTemplate simpMessageTemplate;
-    private final MinioClient minioClient;
-
-    @Value("${minio.bucket-name}")
-    private String bucket;
+    private final MinioUtil minioUtil;
+    private final ChatMapper chatMapper;
 
     /**
      * 요청 유저를 제외한 다른 유저들의 목록을 반환해준다.
@@ -50,50 +51,8 @@ public class ChatService {
      */
     @Transactional
     public ChatUserListResponseDto getChatUserList(User user) {
-        List<User> userList = userRepository.findAll();
-        List<ChatUserDto> chatUserDtoList = new ArrayList<>();
-
-        userList.forEach((member) -> {
-            if(!member.getEmail().equals(user.getEmail())) {
-                ChatRoomUser chatRoomUser = chatRoomUserRepository.findByUserAndTargetUser(user, member).orElse(null);
-                Long chatRoomId = null;
-                ChatRoom chatRoom = new ChatRoom();
-                String lastMessage = null;
-
-                if(chatRoomUser != null) {
-                    chatRoomId = chatRoomUser.getChatRoom().getId();
-                    chatRoom = chatRoomRepository.findById(chatRoomId).orElse(null);
-                    if(chatRoom != null) {
-                        lastMessage = chatRoom.getLastMessage();
-                    }
-                }
-
-                String profileImgUrl = null;
-
-                try {
-                    profileImgUrl = minioClient.getPresignedObjectUrl(
-                            GetPresignedObjectUrlArgs.builder()
-                                    .method(Method.GET)
-                                    .bucket(bucket)
-                                    .object(member.getProfileImgUrl())
-                                    .expiry(2, TimeUnit.HOURS)
-                                    .build());
-                } catch (Exception e) {
-                    throw  new RuntimeException();
-                }
-
-                chatUserDtoList.add(
-                        ChatUserDto.builder()
-                                .email(member.getEmail())
-                                .nickname(member.getNickname())
-                                .profileUrl(profileImgUrl)
-                                .chatRoomId(chatRoomId)
-                                .lastMessage(lastMessage)
-                                .modifiedDate(chatRoom.getModifiedDate())
-                                .build()
-                );
-            }
-        });
+        List<ChatUserDto> chatUserDtoList = chatMapper.getChatUserList(user.getId());
+        chatUserDtoList.forEach(chatUserDto -> chatUserDto.setProfileUrl(minioUtil.getUrlFromMinioObject(chatUserDto.getProfileUrl())));
 
         return ChatUserListResponseDto.builder().chatRoomList(chatUserDtoList).build();
     }
@@ -102,9 +61,15 @@ public class ChatService {
      * 채팅할 User와 채팅방이 없다면 생성하고, 그 정보를 저장한다.
      * @param user, target
      */
+    public ChatUserListResponseDto createChatRoom(User user, String target) {
+        createChatRoomDetail(user, target);
+
+        return this.getChatUserList(user);
+    }
+
     @Transactional
-    public ChatUserListResponseDto createChatRoom(User user, String target) throws Exception {
-        User targetUser = userRepository.findByEmail(target).orElseThrow(() -> new UsernameNotFoundException("해당 유저를 찾을 수 없습니다."));
+    public void createChatRoomDetail(User user, String target) {
+        User targetUser = userRepository.findByEmail(target).orElseThrow(() -> new BizException("user_not_found"));
 
         ChatRoomUser userChatRoom = chatRoomUserRepository.findByUserAndTargetUser(user, targetUser).orElse(null);
         ChatRoomUser targetChatRoom = chatRoomUserRepository.findByUserAndTargetUser(targetUser, user).orElse(null);
@@ -115,48 +80,35 @@ public class ChatService {
             chatRoomUserRepository.save(ChatRoomUser.builder().chatRoom(chatRoom).user(targetUser).targetUser(user).build());
         }
 
-        return this.getChatUserList(user);
     }
 
     /**
      * 채팅방 목록을 반환한다.
      * @param chatRoomId
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public ChatResponseDto getChatList(Long chatRoomId) {
-        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElseThrow(() -> new EntityNotFoundException());
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId).orElseThrow(() -> new BizException("chat_room_not_found"));
 
-        List<Chat> chatList = chatRepository.findAllByChatRoom(chatRoom);
-        List<ChatDto> chatDtoList = new ArrayList<>();
-
-        chatList.forEach((chat) -> {
-            String profileImgUrl = null;
-
-            try {
-                profileImgUrl = minioClient.getPresignedObjectUrl(
-                        GetPresignedObjectUrlArgs.builder()
-                                .method(Method.GET)
-                                .bucket(bucket)
-                                .object(chat.getUser().getProfileImgUrl())
-                                .expiry(2, TimeUnit.HOURS)
-                                .build());
-            } catch (Exception e) {
-                throw  new RuntimeException();
-            }
-
-            chatDtoList.add(ChatDto.toDto(chat, profileImgUrl));
-        });
-
-        return ChatResponseDto.builder().chatList(chatDtoList).build();
+        return ChatResponseDto
+                .builder()
+                .chatList(chatRepository.findAllByChatRoom(chatRoom).stream().map(chat -> ChatDto.of(chat, minioUtil)).toList())
+                .build();
     }
 
     /**
      * 해당 채팅방에 유저가 전송한 메세지를 저장한다.
      * @param user, ChatRequestDto
      */
-    @Transactional
     public ChatResponseDto saveChat(User user, ChatRequestDto requestDto) {
-        ChatRoom chatRoom = chatRoomRepository.findById(requestDto.getChatRoomId()).orElseThrow(() -> new EntityNotFoundException());
+        saveChatDetail(user, requestDto);
+
+        return this.getChatList(requestDto.getChatRoomId());
+    }
+
+    @Transactional
+    public void saveChatDetail(User user, ChatRequestDto requestDto) {
+        ChatRoom chatRoom = chatRoomRepository.findById(requestDto.getChatRoomId()).orElseThrow(() -> new BizException("chat_room_not_found"));
 
         chatRepository.save(Chat.builder()
                 .chatRoom(chatRoom)
@@ -164,30 +116,16 @@ public class ChatService {
                 .content(requestDto.getMessage()).build());
 
         chatRoom.setLastMessage(requestDto.getMessage());
-
-        return this.getChatList(requestDto.getChatRoomId());
+        chatRoomRepository.save(chatRoom);
     }
 
     /**
      * 같은 채팅방 번호를 구독한 유저들에게 simpMesageTemplate 형태로 메세지를 전송한다.
      * @param requestDto
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public void sendMessage(ChatRequestDto requestDto) {
-        User sendUser = userRepository.findByEmail(requestDto.getSenderEmail()).orElseThrow(() -> new UsernameNotFoundException("유저를 찾을 수 없습니다."));
-
-        String profileImgUrl = null;
-        try {
-            profileImgUrl = minioClient.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(Method.GET)
-                            .bucket(bucket)
-                            .object(sendUser.getProfileImgUrl())
-                            .expiry(2, TimeUnit.HOURS)
-                            .build());
-        } catch (Exception e) {
-            throw  new RuntimeException();
-        }
+        User sendUser = userRepository.findByEmail(requestDto.getSenderEmail()).orElseThrow(() -> new BizException("user_not_found"));
 
         simpMessageTemplate.convertAndSend("/subscribe/rooms/" + requestDto.getChatRoomId(),
                 ChatMessage.builder()
@@ -195,7 +133,7 @@ public class ChatService {
                         .content(requestDto.getMessage())
                         .sendDate(LocalDateTime.now())
                         .nickname(sendUser.getNickname())
-                        .profileUrl(profileImgUrl)
+                        .profileUrl(minioUtil.getUrlFromMinioObject(sendUser.getProfileImgUrl()))
                         .build());
     }
 }
