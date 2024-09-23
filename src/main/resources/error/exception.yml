@@ -21,7 +21,7 @@ duplicated_nickname:
   status: 409
   message: 이미 존재하는 닉네임입니다.
 expired_authentication:
-  status: 403
+  status: 401
   message: 인증이 만료되었습니다. 다시 로그인 해주세요.
 current_password_dose_not_match:
   status: 403
