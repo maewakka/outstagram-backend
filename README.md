@@ -5,7 +5,7 @@
 - **Java** : JDK 17
 - **Spring Boot** : 3.1.7
 - **DataBase** : Oracle 21c
-- **ETC** : JPA, Minio, WebSocket, Spring Security, Jwt
+- **ETC** : JPA, MyBatis, Minio, WebSocket, Spring Security, Spring Session
 
 ### 프로젝트 구조
 ```
