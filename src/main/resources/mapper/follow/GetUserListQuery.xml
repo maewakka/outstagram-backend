@@ -3,16 +3,19 @@
 
 <mapper namespace="com.woo.outstagram.mapper.FollowMapper">
     <resultMap id="followResultMap" type="com.woo.outstagram.dto.follow.UserDto">
-        <result column="EMAIL" property="email"/>
-        <result column="NICKNAME" property="nickname"/>
-        <result column="PROFILE_IMG_URL" property="profileUrl"/>
-        <result column="IS_FOLLOW" property="isFollow"/>
+        <result column="email" property="email"/>
+        <result column="nickname" property="nickname"/>
+        <result column="profile_img_url" property="profileUrl"/>
+        <result column="is_follow" property="isFollow"/>
     </resultMap>
 
     <select id="getUserLists" resultMap="followResultMap">
-        SELECT u.EMAIL, u.NICKNAME, u.PROFILE_IMG_URL, CASE WHEN f.FOLLOWER IS NULL THEN 0 ELSE 1 END AS IS_FOLLOW
-        FROM OUTSTAGRAM_USER u LEFT JOIN FOLLOW f
-            ON u.USER_ID = f.FOLLOWING AND f.FOLLOWER = #{ownId} WHERE u.USER_ID != #{ownId}
-            ORDER BY u.NICKNAME
+        SELECT u.email, u.nickname, u.profile_img_url,
+               CASE WHEN f.follower IS NULL THEN 0 ELSE 1 END AS is_follow
+        FROM outstagram_user u
+                 LEFT JOIN follow f
+                           ON u.user_id = f.following AND f.follower = #{ownId}
+        WHERE u.user_id != #{ownId}
+        ORDER BY u.nickname
     </select>
 </mapper>

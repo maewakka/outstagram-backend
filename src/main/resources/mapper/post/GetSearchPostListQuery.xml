@@ -3,53 +3,52 @@
 
 <mapper namespace="com.woo.outstagram.mapper.PostMapper">
     <resultMap id="searchPostResultMap" type="com.woo.outstagram.dto.post.entity.PostDto">
-        <id column="POST_ID" property="postId"/>
-        <result column="NICKNAME" property="nickname"/>
-        <result column="EMAIL" property="email"/>
-        <result column="PROFILE_IMG_URL" property="profileImgUrl"/>
-        <result column="CONTENT" property="content"/>
-        <result column="CREATED_DATE" property="createdDate"/>
-        <result column="MODIFIED_DATE" property="modifiedDate"/>
-        <result column="CHAT_COUNT" property="chatCount"/>
-        <result column="LIKE_COUNT" property="likeCount"/>
-        <result column="IS_LIKED" property="isLiked"/>
+        <id column="post_id" property="postId"/>
+        <result column="nickname" property="nickname"/>
+        <result column="email" property="email"/>
+        <result column="profile_img_url" property="profileImgUrl"/>
+        <result column="content" property="content"/>
+        <result column="created_date" property="createdDate"/>
+        <result column="modified_date" property="modifiedDate"/>
+        <result column="chat_count" property="chatCount"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="is_liked" property="isLiked"/>
 
-        <!-- 파일 리스트 매핑 -->
         <collection property="postFileDtoList" ofType="com.woo.outstagram.dto.post.entity.PostFileDto">
-            <id column="POST_FILE_ID" property="postFileId"/>
-            <result column="POST_FILE_INDEX" property="postFileIndex"/>
-            <result column="POST_FILE_URL" property="postFileUrl"/>
+            <id column="post_file_id" property="postFileId"/>
+            <result column="post_file_index" property="postFileIndex"/>
+            <result column="post_file_url" property="postFileUrl"/>
         </collection>
     </resultMap>
 
     <select id="getSearchPostList" resultMap="searchPostResultMap">
         SELECT
-            p.POST_ID,
-            u.NICKNAME,
-            u.EMAIL,
-            u.PROFILE_IMG_URL,
-            p.CONTENT,
-            p.CREATED_DATE,
-            p.MODIFIED_DATE,
-            (SELECT COUNT(*) FROM POST_CHAT pc WHERE pc.POST_ID = p.POST_ID) AS CHAT_COUNT,
-            (SELECT COUNT(*) FROM POST_LIKE pl WHERE pl.POST_ID = p.POST_ID) AS LIKE_COUNT,
+            p.post_id,
+            u.nickname,
+            u.email,
+            u.profile_img_url,
+            p.content,
+            p.created_date,
+            p.modified_date,
+            (SELECT COUNT(*) FROM post_chat pc WHERE pc.post_id = p.post_id) AS chat_count,
+            (SELECT COUNT(*) FROM post_like pl WHERE pl.post_id = p.post_id) AS like_count,
             (
                 CASE
                     WHEN EXISTS (
                         SELECT 1
-                        FROM POST_LIKE pl
-                        WHERE pl.POST_ID = p.POST_ID AND pl.USER_ID = #{following}
+                        FROM post_like pl
+                        WHERE pl.post_id = p.post_id AND pl.user_id = #{following}
                     ) THEN 1
                     ELSE 0
-            END
-            ) AS IS_LIKED,
-            pf.POST_FILE_ID,
-            pf.POST_FILE_INDEX,
-            pf.POST_FILE_URL
-        FROM POST p
-        JOIN OUTSTAGRAM_USER u ON p.MADE_USER = u.USER_ID
-        LEFT JOIN POST_FILE pf ON p.POST_ID = pf.POST_ID
-        WHERE p.CONTENT LIKE '%' || #{query} || '%'
-        ORDER BY p.MODIFIED_DATE DESC, pf.POST_FILE_INDEX ASC
+                    END
+                ) AS is_liked,
+            pf.post_file_id,
+            pf.post_file_index,
+            pf.post_file_url
+        FROM post p
+                 JOIN outstagram_user u ON p.made_user = u.user_id
+                 LEFT JOIN post_file pf ON p.post_id = pf.post_id
+        WHERE p.content LIKE CONCAT('%', #{query}, '%')
+        ORDER BY p.modified_date DESC, pf.post_file_index ASC
     </select>
 </mapper>
