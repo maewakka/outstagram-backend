@@ -4,7 +4,7 @@
 ### 개발 환경
 - **Java** : JDK 17
 - **Spring Boot** : 3.1.7
-- **DataBase** : Oracle 21c
+- **DataBase** : MySQL 8.0
 - **ETC** : JPA, MyBatis, Minio, WebSocket, Spring Security, Spring Session
 
 ### 프로젝트 구조
